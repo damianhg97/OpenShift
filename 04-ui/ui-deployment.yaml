@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: corporate-banking-ui
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: corporate-banking-ui
+  template:
+    metadata:
+      labels:
+        app: corporate-banking-ui
+    spec:
+      containers:
+        - name: ui
+          image: docker.io/kevinhg97/corporate-banking-ui:openshift
+          imagePullPolicy: IfNotPresent
+          # ✅ QUAN TRỌNG: Force command chạy script của chúng ta
+          command:
+            - /bin/sh
+            - /opt/app-root/entrypoint.sh
+          ports:
+            - name: https
+              containerPort: 8443
+          envFrom:
+            - configMapRef:
+                name: ui-config
+          volumeMounts:
+            # Writable directories (emptyDir)
+            - name: nginx-config
+              mountPath: /opt/app-root/etc/nginx.d
+            - name: runtime-assets
+              mountPath: /opt/app-root/src/assets
+
+            # Templates (read-only from ConfigMap)
+            - name: nginx-template
+              mountPath: /opt/app-root/etc/nginx.d/templates
+              readOnly: true
+            - name: assets-template
+              mountPath: /opt/app-root/src/assets/config.template.json
+              subPath: config.template.json
+              readOnly: true
+
+            # Entrypoint script ở đường dẫn sạch (không ghi đè image)
+            - name: entrypoint-script
+              mountPath: /opt/app-root/entrypoint.sh
+              subPath: entrypoint.sh
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 8443
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+      volumes:
+        # Writable volumes (emptyDir)
+        - name: nginx-config
+          emptyDir: {}
+        - name: runtime-assets
+          emptyDir: {}
+
+        # Read-only ConfigMaps
+        - name: nginx-template
+          configMap:
+            name: ui-nginx-config
+            items:
+              - key: nginx.conf
+                path: default.conf.template
+        - name: assets-template
+          configMap:
+            name: ui-assets-config
+        - name: entrypoint-script
+          configMap:
+            name: ui-entrypoint-script
+            defaultMode: 0755

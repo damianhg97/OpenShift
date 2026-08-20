@@ -1,0 +1,93 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-nginx-config
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+data:
+  nginx.conf: |
+    server {
+        listen 8443 default_server;
+        server_name _;
+        root /opt/app-root/src;
+        index index.html;
+        location /api/ {
+            proxy_pass ${API_UPSTREAM}/api/;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-assets-config
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+data:
+  config.template.json: |
+    {
+      "keycloak": {
+        "url": "${KEYCLOAK_URL}",
+        "realm": "${KEYCLOAK_REALM}",
+        "clientId": "${KEYCLOAK_CLIENT_ID}"
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-entrypoint-script
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    set -eu
+    : "${API_UPSTREAM:?API_UPSTREAM is required}"
+    : "${KEYCLOAK_URL:?KEYCLOAK_URL is required}"
+    : "${KEYCLOAK_REALM:?KEYCLOAK_REALM is required}"
+    : "${KEYCLOAK_CLIENT_ID:?KEYCLOAK_CLIENT_ID is required}"
+
+    # Tạo config.json vào emptyDir
+    sed -e "s|\${KEYCLOAK_URL}|${KEYCLOAK_URL}|g" \
+        -e "s|\${KEYCLOAK_REALM}|${KEYCLOAK_REALM}|g" \
+        -e "s|\${KEYCLOAK_CLIENT_ID}|${KEYCLOAK_CLIENT_ID}|g" \
+        /opt/app-root/src/assets/config.template.json > /opt/app-root/src/assets/config.json
+
+    # Tạo nginx.conf vào emptyDir
+    sed -e "s|\${API_UPSTREAM}|${API_UPSTREAM}|g" \
+        /opt/app-root/etc/nginx.d/templates/default.conf.template > /opt/app-root/etc/nginx.d/default.conf
+
+    # Start nginx
+    exec nginx -g "daemon off;"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ui-config
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+data:
+  API_UPSTREAM: "http://customer-service:8080"
+  KEYCLOAK_URL: "https://keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+  KEYCLOAK_REALM: "banking"
+  KEYCLOAK_CLIENT_ID: "corporate-banking-ui"

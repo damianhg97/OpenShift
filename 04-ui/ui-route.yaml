@@ -1,0 +1,21 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: corporate-banking-ui
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  to:
+    kind: Service
+    name: corporate-banking-ui
+    weight: 100
+  port:
+    targetPort: https
+  tls:
+    # UI nginx listen 8443 (HTTPS). Dùng passthrough hoặc reencrypt tùy TLS cert.
+    # Edge termination phổ biến hơn nếu muốn terminate TLS ở router:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

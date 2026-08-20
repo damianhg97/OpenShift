@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  namespace: khoadghg97-dev
+  labels:
+    app: keycloak
+    app.kubernetes.io/part-of: banking-platform
+data:
+  # Các giá trị non-sensitive. Đổi hostname / proxy settings tại đây mà không cần rebuild.
+  KC_DB: "postgres"
+  KC_DB_URL: "jdbc:postgresql://postgres:5432/banking"
+  KC_DB_SCHEMA: "keycloak"
+  KC_HTTP_ENABLED: "true"
+  KC_PROXY_HEADERS: "xforwarded"
+  KC_HOSTNAME_STRICT: "false"
+  KC_HEALTH_ENABLED: "true"
+  # Sau khi có Route thật, có thể set:
+  KC_HOSTNAME: "keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"

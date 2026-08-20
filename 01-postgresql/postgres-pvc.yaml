@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: khoadghg97-dev
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Đổi storageClassName cho phù hợp với cluster (gp3, standard, ocs-storagecluster-ceph-rbd, ...)
+  storageClassName: gp3
+  resources:
+    requests:
+      storage: 5Gi

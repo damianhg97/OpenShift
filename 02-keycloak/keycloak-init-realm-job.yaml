@@ -1,0 +1,185 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-init-realm
+  namespace: khoadghg97-dev
+  labels:
+    app: keycloak
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: keycloak-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: keycloak-init
+          image: quay.io/keycloak/keycloak:26.3.2
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -eu
+
+              KCADM="/opt/keycloak/bin/kcadm.sh"
+              CONFIG="--config /tmp/kcadm.config"
+              SERVER="--server http://keycloak:8080"
+              REALM_MASTER="--realm master"
+              USER="--user admin"
+              PASS="--password ${KEYCLOAK_ADMIN_PASSWORD}"
+
+              # Helper: return true if JSON array is non-empty
+              is_non_empty() {
+                local cleaned
+                cleaned=$(echo "$1" | tr -d '[:space:]')
+                [ -n "$cleaned" ] && [ "$cleaned" != "[]" ]
+              }
+
+              echo "=== Waiting for Keycloak to be ready ==="
+              until $KCADM config credentials $SERVER $REALM_MASTER $USER $PASS $CONFIG 2>/dev/null; do
+                echo "Waiting for Keycloak at http://keycloak:8080..."
+                sleep 5
+              done
+              echo "Keycloak is ready!"
+
+              echo "=== Login to Keycloak ==="
+              $KCADM config credentials $SERVER $REALM_MASTER $USER $PASS $CONFIG
+
+              # ---- Realm banking ----
+              echo "=== Checking realm banking ==="
+              if $KCADM get realms/banking $CONFIG > /dev/null 2>&1; then
+                echo "Realm banking already exists."
+              else
+                echo "=== Creating realm banking ==="
+                $KCADM create realms $CONFIG \
+                  -s realm=banking \
+                  -s enabled=true \
+                  -s displayName="Banking Realm"
+                echo "Realm banking created."
+              fi
+
+              # ---- Role admin ----
+              echo "=== Checking admin role ==="
+              if $KCADM get roles -r banking -q name=admin $CONFIG > /dev/null 2>&1; then
+                echo "Role admin already exists."
+              else
+                echo "=== Creating admin role ==="
+                $KCADM create roles -r banking $CONFIG \
+                  -s name=admin \
+                  -s description="Administrator role"
+                echo "Role admin created."
+              fi
+
+              # ---- User admin ----
+              echo "=== Checking user admin ==="
+              ADMIN_RESULT=$($KCADM get users -r banking -q username=admin --fields id $CONFIG 2>/dev/null || true)
+              if is_non_empty "$ADMIN_RESULT"; then
+                echo "User admin already exists."
+              else
+                echo "=== Creating user admin ==="
+                $KCADM create users -r banking $CONFIG \
+                  -s username=admin \
+                  -s enabled=true \
+                  -s emailVerified=true \
+                  -s firstName=Super \
+                  -s lastName=Admin \
+                  -s email=admin@banking-platform.com
+                echo "User admin created."
+              fi
+
+              # Luôn set password cho admin (idempotent)
+              echo "=== Setting/Updating password for admin ==="
+              $KCADM set-password -r banking $CONFIG \
+                --username admin \
+                --new-password "${KEYCLOAK_ADMIN_PASSWORD}"
+              echo "Password for admin set successfully."
+
+              # Gán role admin (idempotent)
+              echo "=== Assigning admin role ==="
+              $KCADM add-roles -r banking $CONFIG \
+                --username admin \
+                --rolename admin || true
+              echo "Admin role assigned."
+
+              # ---- User testuser ----
+              echo "=== Checking user testuser ==="
+              TESTUSER_RESULT=$($KCADM get users -r banking -q username=testuser --fields id $CONFIG 2>/dev/null || true)
+              if is_non_empty "$TESTUSER_RESULT"; then
+                echo "User testuser already exists."
+              else
+                echo "=== Creating user testuser ==="
+                $KCADM create users -r banking $CONFIG \
+                  -s username=testuser \
+                  -s enabled=true \
+                  -s emailVerified=true \
+                  -s firstName=Test \
+                  -s lastName=User \
+                  -s email=testuser@banking-platform.com
+                echo "User testuser created."
+              fi
+
+              # Luôn set password cho testuser (idempotent)
+              echo "=== Setting/Updating password for testuser ==="
+              $KCADM set-password -r banking $CONFIG \
+                --username testuser \
+                --new-password "Test1234!"
+              echo "Password for testuser set successfully."
+
+              # ---- Client corporate-banking-ui ----
+              echo "=== Checking client corporate-banking-ui ==="
+              CLIENT_RESULT=$($KCADM get clients -r banking -q clientId=corporate-banking-ui --fields id $CONFIG 2>/dev/null || true)
+
+              if is_non_empty "$CLIENT_RESULT"; then
+                echo "Client corporate-banking-ui already exists."
+
+                CLIENT_ID=$(echo "$CLIENT_RESULT" | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4)
+
+                if [ -z "$CLIENT_ID" ]; then
+                  echo "ERROR: Could not extract client ID. Raw result:"
+                  echo "$CLIENT_RESULT"
+                  exit 1
+                fi
+
+                echo "Updating existing client ID: $CLIENT_ID"
+                $KCADM update clients/$CLIENT_ID -r banking $CONFIG \
+                  -s publicClient=true \
+                  -s 'redirectUris=["'"${UI_ROUTE}"'/*"]' \
+                  -s 'webOrigins=["'"${UI_ROUTE}"'"]' \
+                  -s standardFlowEnabled=true \
+                  -s implicitFlowEnabled=false \
+                  -s directAccessGrantsEnabled=false \
+                  -s 'attributes."pkce.code.challenge.method"=S256'
+                echo "Client updated successfully!"
+              else
+                echo "=== Creating client corporate-banking-ui ==="
+                $KCADM create clients -r banking $CONFIG \
+                  -s clientId=corporate-banking-ui \
+                  -s publicClient=true \
+                  -s 'redirectUris=["'"${UI_ROUTE}"'/*"]' \
+                  -s 'webOrigins=["'"${UI_ROUTE}"'"]' \
+                  -s standardFlowEnabled=true \
+                  -s implicitFlowEnabled=false \
+                  -s directAccessGrantsEnabled=false \
+                  -s 'attributes."pkce.code.challenge.method"=S256'
+                echo "Client corporate-banking-ui created successfully!"
+              fi
+
+              echo "=== Keycloak initialization complete! ==="
+          env:
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-secret
+                  key: KC_BOOTSTRAP_ADMIN_PASSWORD
+            - name: UI_ROUTE
+              value: "https://corporate-banking-ui-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

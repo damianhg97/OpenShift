@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: corporate-banking-ui
+  namespace: khoadghg97-dev
+  labels:
+    app: corporate-banking-ui
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: corporate-banking-ui
+  ports:
+    - name: https
+      port: 8443
+      targetPort: 8443
+      protocol: TCP

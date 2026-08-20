@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  namespace: khoadghg97-dev
+  labels:
+    app: customer-service
+    app.kubernetes.io/part-of: banking-platform
+data:
+  # Các giá trị non-sensitive. Đổi URL mà không cần rebuild image.
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/banking"
+  # Sau khi deploy Keycloak + Route, cập nhật issuer URI thật:
+  # Ví dụ: https://keycloak-banking-platform.apps.rm3.7wse.p1.openshiftapps.com/realms/banking
+  APP_OIDC_ISSUER_URI: "https://keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/banking"
+  # Sau khi deploy UI Route, cập nhật CORS origin thật:
+  APP_CORS_ALLOWED_ORIGIN: "https://corporate-banking-ui-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+  APP_SEED_ENABLED: "false"

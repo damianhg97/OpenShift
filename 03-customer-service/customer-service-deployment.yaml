@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service
+  namespace: khoadghg97-dev
+  labels:
+    app: customer-service
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+    spec:
+      containers:
+        - name: customer-service
+          image: docker.io/kevinhg97/banking-platform-customer-service:openshift
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            # ✅ Thêm dòng này để đọc ConfigMap
+            - name: SPRING_CONFIG_IMPORT
+              value: "optional:file:/config/application.yml"
+            # --- Database ---
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            # --- OIDC / CORS / Seed ---
+            - name: APP_OIDC_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: APP_OIDC_ISSUER_URI
+            - name: APP_CORS_ALLOWED_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: APP_CORS_ALLOWED_ORIGIN
+            - name: APP_SEED_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: APP_SEED_ENABLED
+            # ✅ Thêm profile để dùng config từ file
+            - name: SPRING_PROFILES_ACTIVE
+              value: "docker"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+      volumes:
+        - name: config
+          configMap:
+            name: customer-service-config
