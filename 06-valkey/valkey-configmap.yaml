@@ -1,0 +1,31 @@
+# ==============================================================================
+# Valkey Configuration
+# ==============================================================================
+# ConfigMap chứa file cấu hình valkey.conf cho Valkey server.
+# Valkey sẽ được khởi động với file config này thay vì dùng default.
+# ==============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valkey-config
+  namespace: khoadghg97-dev
+  labels:
+    app: valkey
+    app.kubernetes.io/part-of: banking-platform
+data:
+  valkey.conf: |
+    # Port mặc định Valkey
+    port 6379
+    
+    # Giới hạn memory tối đa (cache-only, không cần persist lâu dài)
+    maxmemory 256mb
+    
+    # Khi đạt maxmemory, xóa key ít dùng nhất (LRU) để nhường chỗ
+    maxmemory-policy allkeys-lru
+    
+    # RDB snapshot: lưu xuống disk nếu có đủ thay đổi
+    # (dù không có PVC, ephemeral storage vẫn giữ snapshot trong vòng đời Pod)
+    save 900 1
+    save 300 10
+    save 60 10000

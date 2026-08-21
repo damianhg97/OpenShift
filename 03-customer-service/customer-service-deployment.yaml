@@ -59,6 +59,16 @@ spec:
                 configMapKeyRef:
                   name: customer-service-config
                   key: APP_SEED_ENABLED
+            # --- Valkey Cache ---
+            # Dùng prefix APP_ để tránh xung đột với K8s service discovery.
+            # K8s tự động inject VALKEY_PORT=tcp://... khi có Service tên "valkey"
+            # trong cùng namespace, ghi đè env var và gây NumberFormatException.
+            - name: APP_VALKEY_HOST
+              value: "valkey"
+            - name: APP_VALKEY_PORT
+              value: "6379"
+            - name: APP_VALKEY_PASSWORD
+              value: ""
             # ✅ Thêm profile để dùng config từ file
             - name: SPRING_PROFILES_ACTIVE
               value: "docker"

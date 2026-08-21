@@ -1,0 +1,79 @@
+# ==============================================================================
+# kong-configmap.yaml
+# ------------------------------------------------------------------------------
+# Chứa declarative config (kong.yml) cho Kong Gateway chạy ở DB-less mode.
+# Ở DB-less mode, Kong KHÔNG dùng PostgreSQL/Cassandra để lưu config — toàn bộ
+# services/routes/plugins được định nghĩa tĩnh trong file YAML này và Kong load
+# lại (reload) mỗi khi ConfigMap thay đổi (cần rollout lại Pod hoặc dùng sidecar
+# reloader — xem ghi chú cuối file).
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-declarative-config
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+data:
+  kong.yml: |
+    # _format_version là bắt buộc với declarative config từ Kong 2.x/3.x trở lên.
+    _format_version: "3.0"
+    _transform: true
+
+    # ------------------------------------------------------------------------
+    # SERVICES: đại diện cho các upstream backend mà Kong sẽ proxy request tới.
+    # ------------------------------------------------------------------------
+    services:
+      - name: customer-service
+        # DNS nội bộ cluster: <service-name>.<namespace>.svc.cluster.local
+        # Dùng short-name vì Kong và customer-service cùng namespace khoadghg97-dev.
+        url: http://customer-service:8080
+        connect_timeout: 60000
+        write_timeout: 60000
+        read_timeout: 60000
+        retries: 3
+
+        # ----------------------------------------------------------------
+        # ROUTES: gắn với service phía trên, định nghĩa Kong sẽ match
+        # request nào (theo path) để forward tới service đó.
+        # ----------------------------------------------------------------
+        routes:
+          - name: customer-service-route
+            paths:
+              - /api/v1/customers
+            # strip_path: false => giữ nguyên path /api/v1/customers khi
+            # forward xuống customer-service (backend controller mapping
+            # đang là /api/v1/customers, không phải "/").
+            strip_path: false
+            preserve_host: false
+            protocols:
+              - http
+              - https
+
+    # ------------------------------------------------------------------------
+    # Chỗ để mở rộng khi thêm service/route mới phía sau Kong, ví dụ:
+    #   - name: another-service
+    #     url: http://another-service:8080
+    #     routes:
+    #       - name: another-service-route
+    #         paths:
+    #           - /api/v1/another
+    #         strip_path: false
+    #
+    # Plugin có thể gắn theo service/route tại đây khi cần (rate-limiting,
+    # cors, jwt...). Hiện chưa bật plugin nào ngoài "bundled" mặc định vì
+    # customer-service đã tự validate JWT qua Spring Security OAuth2 Resource
+    # Server — xem ghi chú KONG_PLUGINS trong kong-deployment.yaml.
+    # ------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+# GHI CHÚ RELOAD CONFIG:
+# Kong DB-less đọc kong.yml MỘT LẦN khi container start (hoặc khi gọi
+# POST /config vào Admin API). Khi bạn sửa ConfigMap này, Pod hiện tại KHÔNG
+# tự nhận thay đổi — cần:
+#   oc rollout restart deployment/kong -n khoadghg97-dev
+# (Có thể thêm Reloader (stakater/Reloader) sau này để tự động hoá bước này.)
+# ------------------------------------------------------------------------------

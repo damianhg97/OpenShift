@@ -1,0 +1,42 @@
+# ==============================================================================
+# kong-route.yaml
+# ------------------------------------------------------------------------------
+# Chỉ tạo Route cho Kong PROXY (port 8000) để UI/client bên ngoài gọi API
+# thông qua Kong. Admin API (port 8001/8444) CỐ Ý KHÔNG có Route — Admin API
+# cho phép tạo/sửa/xoá toàn bộ config của Kong nên chỉ nên truy cập nội bộ
+# (oc port-forward svc/kong 8001:8001, hoặc từ Pod khác trong cùng namespace).
+# ==============================================================================
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kong-proxy
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+spec:
+  # Không set "host" cố định — để OpenShift tự sinh theo pattern
+  # <name>-<namespace>.<router-domain>, giống cách Keycloak Route đang dùng
+  # (keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com).
+  to:
+    kind: Service
+    name: kong
+    weight: 100
+  port:
+    targetPort: proxy
+  tls:
+    # Edge termination: TLS được terminate tại OpenShift Router, traffic
+    # từ Router -> Kong Pod đi qua HTTP nội bộ cluster (đơn giản hoá, không
+    # cần quản lý cert bên trong Kong). Đồng bộ với cách Keycloak đang làm.
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
+
+# ------------------------------------------------------------------------------
+# GHI CHÚ: nếu sau này cần Admin API/Kong Manager truy cập từ ngoài (VD: cho
+# team vận hành), nên tạo Route RIÊNG có thêm lớp bảo vệ (Basic Auth qua
+# annotation, hoặc IP allowlist, hoặc OAuth2-proxy) — không nên mở thẳng như
+# Route proxy này. Tạm thời không tạo để tuân theo yêu cầu "internal only".
+# ------------------------------------------------------------------------------

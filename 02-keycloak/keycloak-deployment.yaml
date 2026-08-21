@@ -117,3 +117,16 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 6
+
+          volumeMounts:
+            - name: theme-volume
+              mountPath: /opt/keycloak/themes/neon-purple/login/theme.properties
+              subPath: theme.properties
+            - name: theme-volume
+              mountPath: /opt/keycloak/themes/neon-purple/login/resources/css/login.css
+              subPath: login.css
+
+      volumes:
+        - name: theme-volume
+          configMap:
+            name: keycloak-theme-neon-purple

@@ -1,0 +1,166 @@
+# ==============================================================================
+# kong-deployment.yaml
+# ------------------------------------------------------------------------------
+# Kong Gateway (OSS) chạy DB-less mode — KHÔNG cần PostgreSQL riêng cho Kong.
+# Toàn bộ config nạp từ ConfigMap kong-declarative-config (kong.yml).
+# ==============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kong
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: kong
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: kong
+        app.kubernetes.io/name: kong
+        app.kubernetes.io/part-of: banking-platform
+        app.kubernetes.io/component: gateway
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: kong
+          image: kong:latest
+          imagePullPolicy: IfNotPresent
+
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          ports:
+            - name: proxy
+              containerPort: 8000
+              protocol: TCP
+            - name: proxy-tls
+              containerPort: 8443
+              protocol: TCP
+            - name: admin
+              containerPort: 8001
+              protocol: TCP
+            - name: admin-tls
+              containerPort: 8444
+              protocol: TCP
+            # >>> THÊM MỚI: Port Kong Manager OSS <<<
+            - name: manager
+              containerPort: 8002
+              protocol: TCP
+            - name: status
+              containerPort: 8100
+              protocol: TCP
+
+          env:
+            - name: KONG_DATABASE
+              value: "off"
+            - name: KONG_DECLARATIVE_CONFIG
+              value: /kong/declarative/kong.yml
+            - name: KONG_PREFIX
+              value: /kong_prefix/
+
+            - name: KONG_PROXY_LISTEN
+              value: "0.0.0.0:8000, 0.0.0.0:8443 ssl"
+            - name: KONG_ADMIN_LISTEN
+              value: "0.0.0.0:8001, 0.0.0.0:8444 ssl"
+            - name: KONG_STATUS_LISTEN
+              value: "0.0.0.0:8100"
+
+            # >>> THÊM MỚI: Kong Manager OSS Listen <<<
+            # Mặc định Kong Manager chạy ở 8002 (HTTP).
+            # Nếu muốn HTTPS nội bộ, thêm "0.0.0.0:8445 ssl".
+            - name: KONG_ADMIN_GUI_LISTEN
+              value: "0.0.0.0:8002"
+
+            # >>> THÊM MỚI: URL công khai của Kong Manager <<<
+            # OpenShift sẽ tự sinh host theo pattern:
+            #   kong-manager-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com
+            # Bạn CẦN cập nhật giá trị này sau khi Route được tạo (xem bước 4).
+            # Nếu để trống, Kong Manager sẽ dùng window.location nhưng có thể
+            # sai port khi chạy qua OpenShift Route (Edge termination).
+            - name: KONG_ADMIN_GUI_URL
+              value: "https://kong-manager-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+
+            # >>> THÊM MỚI: URL Admin API mà Kong Manager sẽ gọi từ browser <<<
+            # SPA chạy trên trình duyệt nên cần biết endpoint Admin API ở đâu.
+            # Nếu để trống, Kong Manager sẽ đoán dựa trên window.location + admin port.
+            # Với OpenShift Edge termination, cần set rõ HTTPS URL.
+            - name: KONG_ADMIN_GUI_API_URL
+              value: "https://kong-admin-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+
+            - name: KONG_NGINX_WORKER_PROCESSES
+              value: "2"
+
+            - name: KONG_PROXY_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_PROXY_ERROR_LOG
+              value: /dev/stderr
+            - name: KONG_ADMIN_ACCESS_LOG
+              value: /dev/stdout
+            - name: KONG_ADMIN_ERROR_LOG
+              value: /dev/stderr
+
+            - name: KONG_PLUGINS
+              value: "bundled"
+
+          volumeMounts:
+            - name: kong-declarative-config
+              mountPath: /kong/declarative
+              readOnly: true
+            - name: kong-prefix
+              mountPath: /kong_prefix
+            - name: tmp
+              mountPath: /tmp
+
+          resources:
+            requests:
+              cpu: 150m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          readinessProbe:
+            httpGet:
+              path: /status
+              port: status
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: status
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+      volumes:
+        - name: kong-declarative-config
+          configMap:
+            name: kong-declarative-config
+        - name: kong-prefix
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

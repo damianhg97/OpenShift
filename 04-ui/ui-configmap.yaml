@@ -87,7 +87,8 @@ metadata:
     app: corporate-banking-ui
     app.kubernetes.io/part-of: banking-platform
 data:
-  API_UPSTREAM: "http://customer-service:8080"
+  # ✅ ĐÃ SỬA: Chuyển từ customer-service sang Kong Gateway
+  API_UPSTREAM: "http://kong:8000"
   KEYCLOAK_URL: "https://keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
   KEYCLOAK_REALM: "banking"
   KEYCLOAK_CLIENT_ID: "corporate-banking-ui"

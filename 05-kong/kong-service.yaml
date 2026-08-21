@@ -1,0 +1,41 @@
+# ==============================================================================
+# kong-service.yaml
+# ------------------------------------------------------------------------------
+# Service ClusterIP cho Kong — chỉ truy cập được trong nội bộ cluster.
+# ==============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: kong
+  ports:
+    - name: proxy
+      port: 8000
+      targetPort: proxy
+      protocol: TCP
+    - name: proxy-tls
+      port: 8443
+      targetPort: proxy-tls
+      protocol: TCP
+    - name: admin
+      port: 8001
+      targetPort: admin
+      protocol: TCP
+    - name: admin-tls
+      port: 8444
+      targetPort: admin-tls
+      protocol: TCP
+    # >>> THÊM MỚI: Port Kong Manager OSS <<<
+    - name: manager
+      port: 8002
+      targetPort: manager
+      protocol: TCP

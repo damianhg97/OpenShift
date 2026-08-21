@@ -1,0 +1,90 @@
+# ==============================================================================
+# Valkey Deployment
+# ==============================================================================
+# Deploy Valkey 8.0 Alpine làm cache layer nội bộ cho banking-platform.
+# Không expose ra ngoài cluster (không có Route), chỉ gọi qua Service.
+# ==============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valkey
+  namespace: khoadghg97-dev
+  labels:
+    app: valkey
+    app.kubernetes.io/part-of: banking-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valkey
+  template:
+    metadata:
+      labels:
+        app: valkey
+        app.kubernetes.io/part-of: banking-platform
+    spec:
+      # Security context cấp Pod: đảm bảo không chạy root, tương thích OpenShift Sandbox
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: valkey
+          image: docker.io/valkey/valkey:8.0-alpine
+          imagePullPolicy: IfNotPresent
+          
+          # Khởi động Valkey với file config từ ConfigMap
+          command: ["valkey-server"]
+          args: ["/usr/local/etc/valkey/valkey.conf"]
+          
+          ports:
+            - containerPort: 6379
+              name: valkey
+              protocol: TCP
+          
+          # Resource tối thiểu cho Developer Sandbox
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          
+          # Mount ConfigMap chứa valkey.conf (subPath để không ghi đè cả thư mục)
+          volumeMounts:
+            - name: config
+              mountPath: /usr/local/etc/valkey/valkey.conf
+              subPath: valkey.conf
+              readOnly: true
+          
+          # Probes: dùng tcpSocket vì Valkey là binary protocol, không cần HTTP
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          
+          # Security context cấp Container
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false  # cần false để RDB snapshot ghi xuống /data
+      
+      volumes:
+        - name: config
+          configMap:
+            name: valkey-config
+            # Đảm bảo file valkey.conf có permission đọc được
+            defaultMode: 0444

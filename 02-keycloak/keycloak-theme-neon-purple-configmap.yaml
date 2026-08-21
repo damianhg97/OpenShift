@@ -1,0 +1,177 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-theme-neon-purple
+  namespace: khoadghg97-dev
+  labels:
+    app: keycloak
+    theme: neon-purple
+data:
+  theme.properties: |
+    parent=keycloak
+    import=common/keycloak
+    styles=css/login.css
+
+  login.css: |
+    /* ===== Neon Purple Theme - Keycloak ===== */
+    :root {
+      --neon-purple: #bf00ff;
+      --neon-purple-light: #d580ff;
+      --neon-purple-dark: #7a00a8;
+      --bg-dark: #0b0014;
+      --card-bg: rgba(20, 0, 35, 0.75);
+      --text-primary: #f0e6ff;
+      --text-secondary: #c9a8e8;
+      --input-bg: rgba(255, 255, 255, 0.06);
+      --border-neon: rgba(191, 0, 255, 0.5);
+    }
+
+    .login-pf body,
+    body {
+      background: radial-gradient(ellipse at top, #1a0033 0%, #0b0014 60%, #000000 100%) !important;
+      background-attachment: fixed !important;
+      color: var(--text-primary) !important;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+    }
+
+    .login-pf-page .login-pf-brand,
+    #kc-header-wrapper,
+    .kc-logo-text {
+      display: none !important;
+    }
+
+    .card-pf,
+    #kc-form-wrapper,
+    .login-pf-page .card-pf {
+      background: var(--card-bg) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      border: 1px solid var(--border-neon) !important;
+      border-radius: 20px !important;
+      box-shadow: 
+        0 0 20px rgba(191, 0, 255, 0.25),
+        0 0 60px rgba(191, 0, 255, 0.1),
+        inset 0 0 30px rgba(191, 0, 255, 0.05) !important;
+      padding: 2.5rem !important;
+      max-width: 420px !important;
+      margin: 0 auto !important;
+    }
+
+    #kc-page-title,
+    h1#kc-page-title,
+    .login-pf-header h1 {
+      color: var(--neon-purple-light) !important;
+      text-shadow: 0 0 12px rgba(191, 0, 255, 0.7) !important;
+      font-weight: 700 !important;
+      font-size: 1.8rem !important;
+      text-align: center !important;
+      margin-bottom: 1.5rem !important;
+    }
+
+    label,
+    .pf-c-form__label,
+    .kc-label {
+      color: var(--text-secondary) !important;
+      font-weight: 500 !important;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    .pf-c-form-control,
+    .kc-input {
+      background: var(--input-bg) !important;
+      border: 1px solid rgba(191, 0, 255, 0.35) !important;
+      border-radius: 12px !important;
+      color: var(--text-primary) !important;
+      padding: 12px 16px !important;
+      transition: all 0.25s ease !important;
+    }
+
+    input:focus,
+    .pf-c-form-control:focus {
+      border-color: var(--neon-purple) !important;
+      box-shadow: 0 0 0 3px rgba(191, 0, 255, 0.25), 0 0 15px rgba(191, 0, 255, 0.4) !important;
+      outline: none !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    input[type="submit"],
+    button[type="submit"],
+    .pf-c-button.pf-m-primary,
+    #kc-login,
+    #kc-register,
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-purple-dark) 100%) !important;
+      border: none !important;
+      border-radius: 12px !important;
+      color: white !important;
+      font-weight: 600 !important;
+      padding: 12px 24px !important;
+      width: 100% !important;
+      box-shadow: 0 0 20px rgba(191, 0, 255, 0.5) !important;
+      transition: all 0.3s ease !important;
+      text-transform: none !important;
+    }
+
+    input[type="submit"]:hover,
+    button[type="submit"]:hover,
+    .pf-c-button.pf-m-primary:hover {
+      background: linear-gradient(135deg, var(--neon-purple-light) 0%, var(--neon-purple) 100%) !important;
+      box-shadow: 0 0 30px rgba(191, 0, 255, 0.7) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    a,
+    #kc-registration a,
+    #kc-forgot-password a,
+    .kc-form-options a {
+      color: var(--neon-purple-light) !important;
+      text-decoration: none !important;
+      transition: all 0.2s ease !important;
+    }
+
+    a:hover {
+      color: #fff !important;
+      text-shadow: 0 0 8px var(--neon-purple) !important;
+    }
+
+    .alert-error,
+    .pf-c-alert.pf-m-danger,
+    .kc-feedback-text {
+      background: rgba(255, 0, 80, 0.15) !important;
+      border: 1px solid rgba(255, 0, 80, 0.4) !important;
+      color: #ffb3c7 !important;
+      border-radius: 10px !important;
+    }
+
+    #kc-social-providers {
+      margin-top: 1.5rem !important;
+    }
+
+    #kc-social-providers a,
+    .kc-social-item {
+      background: rgba(255, 255, 255, 0.05) !important;
+      border: 1px solid rgba(191, 0, 255, 0.3) !important;
+      border-radius: 10px !important;
+      color: var(--text-primary) !important;
+    }
+
+    .checkbox label,
+    .pf-c-check__label {
+      color: var(--text-secondary) !important;
+    }
+
+    #kc-info-wrapper,
+    .login-pf-signup {
+      color: var(--text-secondary) !important;
+      text-align: center !important;
+      margin-top: 1.5rem !important;
+    }
+
+    @media (max-width: 480px) {
+      .card-pf {
+        margin: 1rem !important;
+        padding: 1.5rem !important;
+      }
+    }

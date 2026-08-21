@@ -1,0 +1,27 @@
+# ==============================================================================
+# kong-route-manager.yaml
+# ------------------------------------------------------------------------------
+# Route expose Kong Manager OSS (port 8002) ra ngoài.
+# LƯU Ý: Admin API (port 8001) cũng cần được expose để SPA gọi API.
+# ==============================================================================
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kong-manager
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+spec:
+  to:
+    kind: Service
+    name: kong
+    weight: 100
+  port:
+    targetPort: manager
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

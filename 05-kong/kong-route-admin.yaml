@@ -1,0 +1,30 @@
+# ==============================================================================
+# kong-route-admin.yaml
+# ------------------------------------------------------------------------------
+# Route expose Admin API (port 8001) để Kong Manager SPA gọi từ browser.
+# ⚠️ CẢNH BÁO BẢO MẬT: Admin API cho phép đọc/ghi toàn bộ config Kong.
+#   - Trong môi trường dev/sandbox: có thể tạm mở.
+#   - Production: BẮT BUỘC thêm lớp bảo vệ (OAuth2-proxy, IP allowlist,
+#     hoặc ít nhất là NetworkPolicy hạn chế nguồn truy cập).
+# ==============================================================================
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kong-admin
+  namespace: khoadghg97-dev
+  labels:
+    app: kong
+    app.kubernetes.io/name: kong
+    app.kubernetes.io/part-of: banking-platform
+    app.kubernetes.io/component: gateway
+spec:
+  to:
+    kind: Service
+    name: kong
+    weight: 100
+  port:
+    targetPort: admin
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
