@@ -1,0 +1,158 @@
+# Kafka WITHOUT the Strimzi operator — plain Deployment + Service.
+# Use this instead of k8s/kafka/*.yaml because your sandbox account cannot
+# install cluster-scoped CRDs (kafkas.kafka.strimzi.io), which the Strimzi
+# operator requires. This only uses namespaced resources (Deployment, Service),
+# same permission level you already have for postgres/keycloak/kong/valkey.
+#
+# Single combined controller+broker node, KRaft mode (no ZooKeeper), official
+# apache/kafka image. Storage is emptyDir — "ephemeral" as originally asked:
+# data is lost if the pod restarts. Fine for a DEV sandbox, not for anything
+# durable; switch to a PVC-backed volume later if you need data to survive
+# restarts.
+#
+# The Service name (`my-cluster-kafka-bootstrap`) intentionally matches what
+# customer-service already expects via KAFKA_BOOTSTRAP_SERVERS, so no change
+# is needed on the application side.
+#
+# OpenShift restricted-v2/v3:
+# - No fsGroup: 0 (not in allowed range)
+# - hostUsers: false required by restricted-v3
+# - runAsNonRoot + drop ALL + RuntimeDefault seccomp
+# - emptyDir over paths the image expects to write (config, logs, data)
+#   because image dirs are owned by appuser:1000, not the arbitrary UID
+#   OpenShift assigns (~1012360000).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-cluster-kafka
+  namespace: khoadghg97-dev
+  labels:
+    app: my-cluster-kafka
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # single node — never run 2 pods of the same KRaft node at once
+  selector:
+    matchLabels:
+      app: my-cluster-kafka
+  template:
+    metadata:
+      labels:
+        app: my-cluster-kafka
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        hostUsers: false
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kafka
+          image: apache/kafka:4.1.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - containerPort: 9092
+              name: plaintext
+            - containerPort: 9093
+              name: controller
+          env:
+            # Required by image configure script in KRaft mode
+            - name: CLUSTER_ID
+              value: "MkU3OEVBNTcwNTJENDM2Qk"
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+            # Must be the in-cluster Service DNS name, not localhost — this is
+            # what customer-service (and any other client) actually connects to.
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://my-cluster-kafka-bootstrap:9092"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"
+            # Kafka data (log.dirs) — must be on the writable emptyDir
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/data"
+            # JVM / application log dir (GC logs, kafkaServer logs)
+            - name: LOG_DIR
+              value: "/opt/kafka/logs"
+            # Only valid for a single-node cluster — do not copy these to a
+            # multi-broker setup.
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            # No Topic Operator here (that's a Strimzi-only concept), so let
+            # the broker auto-create `customer-events` with 3 partitions the
+            # first time the app produces/consumes. Set to "false" and create
+            # the topic explicitly (see kafka-topic-job.yaml) if you want
+            # tighter control.
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+            - name: KAFKA_NUM_PARTITIONS
+              value: "3"
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+            # Writable overlay so entrypoint can generate server.properties
+            - name: kafka-config
+              mountPath: /opt/kafka/config
+            # Writable overlay for GC / kafka application logs
+            - name: kafka-logs
+              mountPath: /opt/kafka/logs
+          readinessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 9092
+            initialDelaySeconds: 45
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "768Mi"
+            limits:
+              cpu: "1"
+              memory: "1.5Gi"
+      volumes:
+        - name: kafka-data
+          emptyDir: {}
+        - name: kafka-config
+          emptyDir: {}
+        - name: kafka-logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-cluster-kafka-bootstrap
+  namespace: khoadghg97-dev
+  labels:
+    app: my-cluster-kafka
+spec:
+  selector:
+    app: my-cluster-kafka
+  ports:
+    - name: plaintext
+      port: 9092
+      targetPort: 9092

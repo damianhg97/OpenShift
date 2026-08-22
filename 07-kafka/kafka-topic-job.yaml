@@ -1,0 +1,30 @@
+# OPTIONAL — only needed if you set KAFKA_AUTO_CREATE_TOPICS_ENABLE to "false"
+# in kafka-deployment.yaml and want explicit control over partitions/replication
+# instead of relying on auto-create defaults.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-customer-events-topic
+  namespace: khoadghg97-dev
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-topic
+          image: apache/kafka:4.1.0
+          command:
+            - /opt/kafka/bin/kafka-topics.sh
+            - --create
+            - --if-not-exists
+            - --topic
+            - customer-events
+            - --partitions
+            - "3"
+            - --replication-factor
+            - "1"
+            - --config
+            - retention.ms=604800000
+            - --bootstrap-server
+            - my-cluster-kafka-bootstrap:9092

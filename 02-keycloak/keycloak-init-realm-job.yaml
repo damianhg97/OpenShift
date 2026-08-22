@@ -165,6 +165,33 @@ spec:
                   -s directAccessGrantsEnabled=false \
                   -s 'attributes."pkce.code.challenge.method"=S256'
                 echo "Client corporate-banking-ui created successfully!"
+
+                CLIENT_RESULT=$($KCADM get clients -r banking -q clientId=corporate-banking-ui --fields id $CONFIG 2>/dev/null || true)
+                CLIENT_ID=$(echo "$CLIENT_RESULT" | grep -oE '"id"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | cut -d'"' -f4)
+                if [ -z "$CLIENT_ID" ]; then
+                  echo "ERROR: Could not extract client ID after create. Raw result:"
+                  echo "$CLIENT_RESULT"
+                  exit 1
+                fi
+              fi
+
+              # ---- Audience mapper: access token must include aud=customer-service ----
+              # customer-service SecurityConfig rejects tokens without this audience.
+              echo "=== Ensuring audience mapper (customer-service) on corporate-banking-ui ==="
+              MAPPER_RESULT=$($KCADM get clients/$CLIENT_ID/protocol-mappers/models -r banking $CONFIG 2>/dev/null || true)
+              if echo "$MAPPER_RESULT" | grep -q '"name"[[:space:]]*:[[:space:]]*"customer-service-audience"'; then
+                echo "Audience mapper customer-service-audience already exists."
+              else
+                echo "Creating audience protocol mapper..."
+                $KCADM create clients/$CLIENT_ID/protocol-mappers/models -r banking $CONFIG \
+                  -s name=customer-service-audience \
+                  -s protocol=openid-connect \
+                  -s protocolMapper=oidc-audience-mapper \
+                  -s 'config."included.custom.audience"=customer-service' \
+                  -s 'config."id.token.claim"=true' \
+                  -s 'config."access.token.claim"=true' \
+                  -s 'config."introspection.token.claim"=true'
+                echo "Audience mapper created."
               fi
 
               echo "=== Keycloak initialization complete! ==="
