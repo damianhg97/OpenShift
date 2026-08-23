@@ -1,0 +1,843 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-theme-kevin-bank
+  namespace: khoadghg97-dev
+  labels:
+    app: keycloak
+    theme: kevin-bank
+data:
+  theme.properties: |
+    parent=keycloak
+    import=common/keycloak
+    styles=css/login.css
+
+  login.css: |
+    /* =========================================================
+       Kevin Bank - Modern Banking Theme
+       Soft Banking Green / Premium Fintech
+       ========================================================= */
+
+    :root {
+      /* Brand */
+      --kb-primary: #087F5B;
+      --kb-primary-hover: #066B4C;
+      --kb-primary-dark: #045A40;
+      --kb-primary-light: #12A878;
+
+      /* Soft Green */
+      --kb-mint: #E8F7F1;
+      --kb-mint-dark: #D5F0E6;
+
+      /* Background */
+      --kb-background: #F4F9F7;
+      --kb-background-top: #EDF7F3;
+
+      /* Surface */
+      --kb-card: #FFFFFF;
+      --kb-card-soft: #FAFDFC;
+
+      /* Text */
+      --kb-text: #17352B;
+      --kb-text-secondary: #60756D;
+      --kb-text-muted: #8A9A94;
+
+      /* Border */
+      --kb-border: #DCEAE4;
+      --kb-border-hover: #B8D7CA;
+
+      /* Input */
+      --kb-input-bg: #F8FBFA;
+      --kb-input-focus-bg: #FFFFFF;
+
+      /* Status */
+      --kb-error: #D64545;
+      --kb-error-bg: #FFF3F3;
+      --kb-error-border: #F2C7C7;
+
+      --kb-success: #087F5B;
+
+      /* Shadows */
+      --kb-shadow:
+        0 10px 35px rgba(20, 75, 55, 0.08);
+
+      --kb-shadow-hover:
+        0 14px 45px rgba(20, 75, 55, 0.12);
+
+      --kb-focus:
+        0 0 0 3px rgba(8, 127, 91, 0.14);
+    }
+
+
+    /* =========================================================
+       GLOBAL
+       ========================================================= */
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body,
+    .login-pf body {
+      background:
+        radial-gradient(
+          circle at 50% 0%,
+          var(--kb-background-top) 0%,
+          var(--kb-background) 45%,
+          #F7FAF9 100%
+        ) !important;
+
+      background-attachment: fixed !important;
+
+      color: var(--kb-text) !important;
+
+      font-family:
+        Inter,
+        "Segoe UI",
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif !important;
+
+      -webkit-font-smoothing: antialiased !important;
+      -moz-osx-font-smoothing: grayscale !important;
+    }
+
+
+    /* =========================================================
+       REMOVE DEFAULT KEYCLOAK BRANDING
+       ========================================================= */
+
+    .login-pf-page .login-pf-brand,
+    #kc-header-wrapper,
+    .kc-logo-text {
+      display: none !important;
+    }
+
+
+    /* =========================================================
+       LOGIN PAGE
+       ========================================================= */
+
+    .login-pf-page {
+      min-height: 100vh !important;
+
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+
+      padding: 32px 20px !important;
+    }
+
+
+    /* =========================================================
+       LOGIN CONTAINER
+       ========================================================= */
+
+    .login-pf-page .card-pf,
+    .card-pf,
+    #kc-form-wrapper {
+
+      width: 100% !important;
+      max-width: 430px !important;
+
+      background: rgba(255, 255, 255, 0.96) !important;
+
+      border:
+        1px solid var(--kb-border) !important;
+
+      border-radius: 18px !important;
+
+      box-shadow:
+        var(--kb-shadow) !important;
+
+      padding: 38px 38px 34px !important;
+
+      margin:
+        0 auto !important;
+
+      backdrop-filter:
+        blur(12px) !important;
+
+      -webkit-backdrop-filter:
+        blur(12px) !important;
+
+      transition:
+        box-shadow 0.25s ease,
+        transform 0.25s ease !important;
+    }
+
+
+    .login-pf-page .card-pf:hover {
+      box-shadow:
+        var(--kb-shadow-hover) !important;
+    }
+
+
+    /* =========================================================
+       KEVIN BANK BRAND
+       ========================================================= */
+
+    #kc-header {
+      margin-bottom: 18px !important;
+    }
+
+    #kc-header::before {
+
+      content: "Kevin Bank";
+
+      display: block !important;
+
+      color: var(--kb-primary) !important;
+
+      font-size: 26px !important;
+
+      font-weight: 750 !important;
+
+      letter-spacing: -0.5px !important;
+
+      text-align: center !important;
+
+      margin-bottom: 8px !important;
+    }
+
+
+    #kc-header::after {
+
+      content: "Secure banking authentication";
+
+      display: block !important;
+
+      color: var(--kb-text-muted) !important;
+
+      font-size: 13px !important;
+
+      font-weight: 450 !important;
+
+      text-align: center !important;
+
+      letter-spacing: 0.1px !important;
+    }
+
+
+    /* =========================================================
+       PAGE TITLE
+       ========================================================= */
+
+    #kc-page-title,
+    h1#kc-page-title,
+    .login-pf-header h1 {
+
+      color: var(--kb-text) !important;
+
+      font-size: 25px !important;
+
+      font-weight: 700 !important;
+
+      line-height: 1.3 !important;
+
+      letter-spacing: -0.4px !important;
+
+      text-align: center !important;
+
+      margin:
+        20px 0 24px !important;
+
+      text-shadow: none !important;
+    }
+
+
+    /* =========================================================
+       FORM
+       ========================================================= */
+
+    .form-group {
+      margin-bottom: 18px !important;
+    }
+
+
+    /* =========================================================
+       LABEL
+       ========================================================= */
+
+    label,
+    .pf-c-form__label,
+    .kc-label {
+
+      color: var(--kb-text) !important;
+
+      font-size: 14px !important;
+
+      font-weight: 600 !important;
+
+      margin-bottom: 7px !important;
+    }
+
+
+    /* =========================================================
+       INPUT
+       ========================================================= */
+
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    .pf-c-form-control,
+    .kc-input {
+
+      width: 100% !important;
+
+      box-sizing: border-box !important;
+
+      background:
+        var(--kb-input-bg) !important;
+
+      color:
+        var(--kb-text) !important;
+
+      border:
+        1px solid var(--kb-border) !important;
+
+      border-radius:
+        10px !important;
+
+      min-height:
+        48px !important;
+
+      padding:
+        12px 14px !important;
+
+      font-size:
+        15px !important;
+
+      line-height:
+        1.4 !important;
+
+      outline:
+        none !important;
+
+      box-shadow:
+        none !important;
+
+      transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease !important;
+    }
+
+
+    input::placeholder {
+      color:
+        var(--kb-text-muted) !important;
+
+      opacity:
+        1 !important;
+    }
+
+
+    input:hover {
+      border-color:
+        var(--kb-border-hover) !important;
+
+      background:
+        #FFFFFF !important;
+    }
+
+
+    input:focus,
+    .pf-c-form-control:focus {
+
+      background:
+        var(--kb-input-focus-bg) !important;
+
+      border-color:
+        var(--kb-primary) !important;
+
+      box-shadow:
+        var(--kb-focus) !important;
+
+      outline:
+        none !important;
+    }
+
+
+    /* =========================================================
+       PASSWORD VISIBILITY BUTTON
+       ========================================================= */
+
+    .pf-c-button.pf-m-control,
+    .kc-input-group .pf-c-button {
+
+      background:
+        transparent !important;
+
+      border:
+        none !important;
+
+      color:
+        var(--kb-text-secondary) !important;
+    }
+
+
+    .pf-c-button.pf-m-control:hover {
+
+      color:
+        var(--kb-primary) !important;
+    }
+
+
+    /* =========================================================
+       PRIMARY BUTTON
+       ========================================================= */
+
+    input[type="submit"],
+    button[type="submit"],
+    .pf-c-button.pf-m-primary,
+    #kc-login,
+    #kc-register,
+    .btn-primary {
+
+      width: 100% !important;
+
+      min-height:
+        48px !important;
+
+      background:
+        var(--kb-primary) !important;
+
+      border:
+        none !important;
+
+      border-radius:
+        10px !important;
+
+      color:
+        #FFFFFF !important;
+
+      font-size:
+        15px !important;
+
+      font-weight:
+        650 !important;
+
+      letter-spacing:
+        0 !important;
+
+      padding:
+        12px 20px !important;
+
+      box-shadow:
+        0 4px 12px rgba(8, 127, 91, 0.18) !important;
+
+      cursor:
+        pointer !important;
+
+      transition:
+        background 0.2s ease,
+        box-shadow 0.2s ease,
+        transform 0.15s ease !important;
+
+      text-transform:
+        none !important;
+    }
+
+
+    input[type="submit"]:hover,
+    button[type="submit"]:hover,
+    .pf-c-button.pf-m-primary:hover,
+    #kc-login:hover {
+
+      background:
+        var(--kb-primary-hover) !important;
+
+      box-shadow:
+        0 6px 16px rgba(8, 127, 91, 0.22) !important;
+
+      transform:
+        translateY(-1px) !important;
+    }
+
+
+    input[type="submit"]:active,
+    button[type="submit"]:active,
+    #kc-login:active {
+
+      transform:
+        translateY(0) !important;
+
+      box-shadow:
+        0 3px 8px rgba(8, 127, 91, 0.18) !important;
+    }
+
+
+    /* =========================================================
+       LINKS
+       ========================================================= */
+
+    a,
+    #kc-registration a,
+    #kc-forgot-password a,
+    .kc-form-options a {
+
+      color:
+        var(--kb-primary) !important;
+
+      font-weight:
+        550 !important;
+
+      text-decoration:
+        none !important;
+
+      transition:
+        color 0.2s ease !important;
+    }
+
+
+    a:hover {
+
+      color:
+        var(--kb-primary-dark) !important;
+
+      text-decoration:
+        underline !important;
+
+      text-shadow:
+        none !important;
+    }
+
+
+    /* =========================================================
+       FORM OPTIONS
+       ========================================================= */
+
+    .kc-form-options {
+
+      margin-top:
+        8px !important;
+
+      margin-bottom:
+        20px !important;
+    }
+
+
+    /* =========================================================
+       CHECKBOX
+       ========================================================= */
+
+    .checkbox label,
+    .pf-c-check__label {
+
+      color:
+        var(--kb-text-secondary) !important;
+
+      font-size:
+        14px !important;
+
+      font-weight:
+        450 !important;
+    }
+
+
+    input[type="checkbox"] {
+
+      accent-color:
+        var(--kb-primary) !important;
+    }
+
+
+    /* =========================================================
+       ALERT / ERROR
+       ========================================================= */
+
+    .alert-error,
+    .pf-c-alert.pf-m-danger,
+    .kc-feedback-text {
+
+      background:
+        var(--kb-error-bg) !important;
+
+      border:
+        1px solid var(--kb-error-border) !important;
+
+      color:
+        var(--kb-error) !important;
+
+      border-radius:
+        10px !important;
+
+      padding:
+        12px 14px !important;
+
+      font-size:
+        14px !important;
+
+      box-shadow:
+        none !important;
+    }
+
+
+    /* =========================================================
+       SUCCESS
+       ========================================================= */
+
+    .alert-success,
+    .pf-c-alert.pf-m-success {
+
+      background:
+        var(--kb-mint) !important;
+
+      border:
+        1px solid var(--kb-mint-dark) !important;
+
+      color:
+        var(--kb-primary-dark) !important;
+
+      border-radius:
+        10px !important;
+    }
+
+
+    /* =========================================================
+       SOCIAL LOGIN
+       ========================================================= */
+
+    #kc-social-providers {
+
+      margin-top:
+        24px !important;
+
+      padding-top:
+        20px !important;
+
+      border-top:
+        1px solid var(--kb-border) !important;
+    }
+
+
+    #kc-social-providers a,
+    .kc-social-item {
+
+      width:
+        100% !important;
+
+      background:
+        #FFFFFF !important;
+
+      border:
+        1px solid var(--kb-border) !important;
+
+      border-radius:
+        10px !important;
+
+      color:
+        var(--kb-text) !important;
+
+      min-height:
+        46px !important;
+
+      transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease !important;
+    }
+
+
+    #kc-social-providers a:hover,
+    .kc-social-item:hover {
+
+      background:
+        var(--kb-card-soft) !important;
+
+      border-color:
+        var(--kb-border-hover) !important;
+
+      box-shadow:
+        0 3px 10px rgba(20, 75, 55, 0.06) !important;
+
+      text-decoration:
+        none !important;
+    }
+
+
+    /* =========================================================
+       REGISTRATION / INFO
+       ========================================================= */
+
+    #kc-info-wrapper,
+    .login-pf-signup {
+
+      color:
+        var(--kb-text-secondary) !important;
+
+      text-align:
+        center !important;
+
+      font-size:
+        14px !important;
+
+      line-height:
+        1.6 !important;
+
+      margin-top:
+        22px !important;
+    }
+
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+
+    #kc-info {
+
+      margin-top:
+        8px !important;
+    }
+
+
+    /* =========================================================
+       SMALL SECURITY MESSAGE
+       ========================================================= */
+
+    #kc-form-buttons::after {
+
+      content:
+        "Your connection is protected by secure authentication.";
+
+      display:
+        block !important;
+
+      text-align:
+        center !important;
+
+      color:
+        var(--kb-text-muted) !important;
+
+      font-size:
+        11px !important;
+
+      line-height:
+        1.5 !important;
+
+      margin-top:
+        14px !important;
+    }
+
+
+    /* =========================================================
+       DISABLED
+       ========================================================= */
+
+    button:disabled,
+    input:disabled {
+
+      opacity:
+        0.55 !important;
+
+      cursor:
+        not-allowed !important;
+    }
+
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
+    @media (max-width: 480px) {
+
+      .login-pf-page {
+
+        padding:
+          20px 14px !important;
+
+        align-items:
+          flex-start !important;
+
+        padding-top:
+          32px !important;
+      }
+
+
+      .login-pf-page .card-pf,
+      .card-pf,
+      #kc-form-wrapper {
+
+        max-width:
+          100% !important;
+
+        padding:
+          30px 22px 26px !important;
+
+        border-radius:
+          16px !important;
+      }
+
+
+      #kc-header::before {
+
+        font-size:
+          23px !important;
+      }
+
+
+      #kc-page-title,
+      h1#kc-page-title {
+
+        font-size:
+          22px !important;
+
+        margin-top:
+          18px !important;
+      }
+
+
+      input[type="text"],
+      input[type="password"],
+      input[type="email"],
+      .pf-c-form-control,
+      .kc-input {
+
+        min-height:
+          46px !important;
+      }
+    }
+
+
+    /* =========================================================
+       ACCESSIBILITY
+       ========================================================= */
+
+    :focus-visible {
+
+      outline:
+        3px solid rgba(8, 127, 91, 0.25) !important;
+
+      outline-offset:
+        2px !important;
+    }
+
+
+    /* =========================================================
+       REDUCED MOTION
+       ========================================================= */
+
+    @media (prefers-reduced-motion: reduce) {
+
+      *,
+      *::before,
+      *::after {
+
+        animation-duration:
+          0.01ms !important;
+
+        animation-iteration-count:
+          1 !important;
+
+        transition-duration:
+          0.01ms !important;
+
+        scroll-behavior:
+          auto !important;
+      }
+    }

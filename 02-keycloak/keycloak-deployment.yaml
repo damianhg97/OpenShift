@@ -120,13 +120,14 @@ spec:
 
           volumeMounts:
             - name: theme-volume
-              mountPath: /opt/keycloak/themes/neon-purple/login/theme.properties
+              mountPath: /opt/keycloak/themes/kevin-bank/login/theme.properties
               subPath: theme.properties
+
             - name: theme-volume
-              mountPath: /opt/keycloak/themes/neon-purple/login/resources/css/login.css
+              mountPath: /opt/keycloak/themes/kevin-bank/login/resources/css/login.css
               subPath: login.css
 
       volumes:
         - name: theme-volume
           configMap:
-            name: keycloak-theme-neon-purple
+            name: keycloak-theme-kevin-bank
