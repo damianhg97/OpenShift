@@ -1,171 +1,235 @@
-# Camunda 8 Self-Managed – Deploy trên OpenShift (Kevin Bank)
+# Camunda 8.9 trên OpenShift Developer Sandbox
 
-Bộ file deploy Camunda 8 Self-Managed (Helm) trên **OpenShift Developer Sandbox**, dùng chung namespace `khoadghg97-dev` với các dependency external đã có sẵn.
+Hướng dẫn cài đặt và sử dụng **Camunda 8.9** (Helm chart 14.x) trên OpenShift Developer Sandbox.
 
-## Kiến trúc đã chốt
+**Namespace:** `khoadghg97-dev`
 
-| Component | Cách triển khai | Ghi chú |
-|-----------|-----------------|---------|
-| Zeebe / Operate / Tasklist / Identity / Connectors | Helm chart `camunda/camunda-platform` | Version 8.6.x (chart ~11.x) |
-| PostgreSQL | External (`postgres:5432`) | Schema `camunda` + DB `identity` |
-| Keycloak | External (`keycloak:8080`) | Realm `banking`, client `camunda` |
-| OpenSearch | Deploy riêng (file YAML) | Secondary storage, security plugin tắt |
-| Routes | OpenShift Route (edge + Redirect) | Operate, Tasklist, Identity |
+---
 
-**Không** deploy PostgreSQL / Keycloak / Elasticsearch nội bộ của Helm chart.
+## Mục lục
 
-## Danh sách file
+1. [Yêu cầu](#1-yêu-cầu)
+2. [Cấu trúc thư mục](#2-cấu-trúc-thư-mục)
+3. [Dọn dẹp (nếu cài lại)](#3-dọn-dẹp-nếu-cài-lại)
+4. [Cài đặt](#4-cài-đặt)
+5. [Truy cập ứng dụng](#5-truy-cập-ứng-dụng)
+6. [Giải thích từng ứng dụng](#6-giải-thích-từng-ứng-dụng)
+7. [Tài khoản mặc định](#7-tài-khoản-mặc-định)
+8. [Kiểm tra & Debug](#8-kiểm-tra--debug)
+9. [Lưu ý quan trọng](#9-lưu-ý-quan-trọng)
+
+---
+
+## 1. Yêu cầu
+
+- OpenShift CLI (`oc`) đã login vào Developer Sandbox
+- Helm 3.x trở lên
+- Namespace: `khoadghg97-dev`
+
+```bash
+oc project khoadghg97-dev
+helm version
+```
+
+---
+
+## 2. Cấu trúc thư mục
 
 ```
-camunda-deploy/
-├── opensearch-deployment.yaml      # Phase 1 – OpenSearch + Dashboards
-├── camunda-postgres-schema.yaml    # Phase 2 – Job tạo schema/DB
-├── camunda-keycloak-client.yaml    # Phase 3 – Job tạo client Keycloak
-├── camunda-identity-secret.yaml    # Secret client secrets cho Identity
-├── camunda-values.yaml             # Phase 4 – Helm values
-├── camunda-routes.yaml             # Phase 5 – OpenShift Routes
-├── deploy-camunda.sh               # Phase 6 – Script deploy tuần tự
+08-camunda/
+├── camunda-credentials.yaml   # Secret chứa password & token
+├── camunda-routes.yaml        # Route OpenShift
+├── values-sandbox.yaml        # Helm values cho Sandbox
 └── README.md
 ```
 
-## Prerequisites
+---
 
-1. Đã `oc login` vào cluster và project `khoadghg97-dev`.
-2. Các service sau đã chạy:
-   - `postgres:5432` (DB `banking`, user `banking`)
-   - `keycloak:8080` (realm `banking`)
-3. Secrets đã tồn tại:
-   - `postgres-secret` (key `password`)
-   - `keycloak-secret` (key `KEYCLOAK_ADMIN` + `KEYCLOAK_ADMIN_PASSWORD`, hoặc `admin-password`)
-4. Helm 3 đã cài.
-
-Nếu tên secret/key khác, sửa `secretKeyRef` trong:
-- `camunda-postgres-schema.yaml`
-- `camunda-keycloak-client.yaml`
-- `camunda-values.yaml`
-
-## Cách deploy (khuyến nghị)
+## 3. Dọn dẹp (nếu cài lại)
 
 ```bash
-cd camunda-deploy
-./deploy-camunda.sh
+oc project khoadghg97-dev
+
+# Xóa Helm release
+helm uninstall camunda -n khoadghg97-dev || true
+
+# Xóa PVC
+oc delete pvc --all -n khoadghg97-dev || true
+
+# Xóa Secret & Route
+oc delete secret camunda-credentials -n khoadghg97-dev || true
+oc delete route camunda-orchestration camunda-identity camunda-keycloak -n khoadghg97-dev || true
 ```
 
-Script thực hiện đúng thứ tự dependency:
+---
 
-1. Deploy OpenSearch → đợi ready  
-2. Job tạo schema PostgreSQL  
-3. Job tạo Keycloak client `camunda`  
-4. Apply Identity secret  
-5. `helm upgrade --install` Camunda  
-6. Đợi pods (best-effort)  
-7. Tạo Routes  
-8. In summary  
+## 4. Cài đặt
 
-### Deploy thủ công từng bước
+### Bước 1: Tạo Secret
 
 ```bash
-# 1. OpenSearch
-oc apply -f opensearch-deployment.yaml
-oc wait --for=condition=available deployment/opensearch --timeout=300s
+oc apply -f camunda-credentials.yaml
+```
 
-# 2. Schema
-oc delete job camunda-postgres-schema --ignore-not-found
-oc apply -f camunda-postgres-schema.yaml
-oc wait --for=condition=complete job/camunda-postgres-schema --timeout=180s
+### Bước 2: Cài Camunda bằng Helm
 
-# 3. Keycloak client
-oc delete job camunda-keycloak-client --ignore-not-found
-oc apply -f camunda-keycloak-client.yaml
-oc wait --for=condition=complete job/camunda-keycloak-client --timeout=300s
-
-# 4. Secrets
-oc apply -f camunda-identity-secret.yaml
-
-# 5. Helm
+```bash
 helm repo add camunda https://helm.camunda.io
 helm repo update
-helm upgrade --install camunda camunda/camunda-platform \
-  --namespace khoadghg97-dev \
-  --version 11.3.0 \
-  -f camunda-values.yaml
 
-# 6. Routes
+helm upgrade --install camunda camunda/camunda-platform \
+  --version 14.8.5 \
+  --namespace khoadghg97-dev \
+  -f values-sandbox.yaml \
+  --timeout 20m
+```
+
+### Bước 3: Đợi Pod sẵn sàng
+
+```bash
+oc get pods -w
+```
+
+Các pod cần ở trạng thái `Running` và `Ready`:
+
+- `camunda-elasticsearch-master-0`
+- `camunda-zeebe-0`
+- `camunda-identity-...`
+- `camunda-keycloak-0`
+- `camunda-identity-postgresql-0`
+- `camunda-postgresql-0` (nếu có)
+
+### Bước 4: Tạo Route
+
+```bash
 oc apply -f camunda-routes.yaml
 ```
 
-## Cấu hình quan trọng cần chỉnh sau deploy
-
-### 1. publicIssuerUrl & redirectUrl
-
-Trong `camunda-values.yaml`, thay domain placeholder bằng hostname thực tế từ Route:
+Kiểm tra:
 
 ```bash
-oc get route -n khoadghg97-dev
+oc get route | grep camunda
 ```
 
-Ví dụ:
+---
 
-```yaml
-global:
-  identity:
-    auth:
-      publicIssuerUrl: "https://keycloak-khoadghg97-dev.apps.xxxx.openshiftapps.com/realms/banking"
-      operate:
-        redirectUrl: "https://camunda-operate-khoadghg97-dev.apps.xxxx.openshiftapps.com/operate"
-      tasklist:
-        redirectUrl: "https://camunda-tasklist-khoadghg97-dev.apps.xxxx.openshiftapps.com/tasklist"
-```
+## 5. Truy cập ứng dụng
 
-Sau đó:
+| Ứng dụng   | URL                                                                                      | Tài khoản      |
+|------------|------------------------------------------------------------------------------------------|----------------|
+| **Operate**    | https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/operate  | demo / demo    |
+| **Tasklist**   | https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/tasklist | demo / demo    |
+| **Admin**      | https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/admin    | demo / demo    |
+| **Identity**   | https://camunda-identity-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com               | demo / demo    |
+| **Keycloak**   | https://camunda-keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com               | admin / admin123 |
+
+> **Lưu ý:** Từ Camunda 8.8+, Operate + Tasklist + Admin được gộp chung trong **Orchestration Cluster** (pod `camunda-zeebe`). Không còn pod riêng `operate` / `tasklist`.
+
+---
+
+## 6. Giải thích từng ứng dụng
+
+| Ứng dụng     | Mục đích chính                                      | Khi nào dùng                                      |
+|--------------|-----------------------------------------------------|---------------------------------------------------|
+| **Operate**  | Theo dõi process instance, xử lý incident           | Xem process chạy đến đâu, sửa lỗi runtime         |
+| **Tasklist** | Làm User Task (công việc của con người)             | Duyệt đơn, nhập liệu, hoàn thành task             |
+| **Admin**    | Quản trị Orchestration Cluster (user/role nội bộ)   | Quản lý quyền truy cập Operate/Tasklist/API       |
+| **Identity** | Quản lý User – Role – Permission toàn hệ thống      | Tạo user mới, phân quyền, multi-tenant            |
+| **Keycloak** | Identity Provider (OIDC) – nơi xác thực thực sự     | Cấu hình SSO, client, password policy, realm      |
+
+### Luồng sử dụng thường gặp
+
+1. Vào **Identity** → tạo user / gán role  
+2. User đăng nhập **Operate** để theo dõi process  
+3. User đăng nhập **Tasklist** để làm task  
+4. Khi có lỗi → vào **Operate** xem và xử lý incident  
+5. Chỉ vào **Keycloak** khi cần cấu hình xác thực sâu (SSO, LDAP…)
+
+---
+
+## 7. Tài khoản mặc định
+
+| Thành phần              | Username | Password   | Ghi chú                          |
+|-------------------------|----------|------------|----------------------------------|
+| Operate / Tasklist / Admin / Identity | `demo`   | `demo`     | User Camunda (từ secret)         |
+| Keycloak Admin Console  | `admin`  | `admin123` | Admin của Keycloak               |
+
+Mật khẩu được lưu trong Secret `camunda-credentials`.
+
+Lấy lại password demo:
 
 ```bash
-helm upgrade camunda camunda/camunda-platform -n khoadghg97-dev -f camunda-values.yaml
+oc get secret camunda-credentials -n khoadghg97-dev \
+  -o jsonpath='{.data.identity-firstuser-password}' | base64 -d
+echo
 ```
 
-### 2. Keycloak client redirect URIs
+---
 
-Trên Keycloak Admin Console (realm `banking` → client `camunda`):
+## 8. Kiểm tra & Debug
 
-- Valid redirect URIs: `https://camunda-*-khoadghg97-dev.apps.../*`
-- Web origins: `+` hoặc domain cụ thể
+### Xem trạng thái
 
-### 3. Secret Keycloak admin
-
-Nếu Job Keycloak client fail vì secret key khác, sửa:
-
-```yaml
-# camunda-keycloak-client.yaml
-secretKeyRef:
-  name: keycloak-secret   # tên secret thực tế
-  key: KEYCLOAK_ADMIN_PASSWORD  # hoặc admin-password / password
+```bash
+oc get pods
+oc get svc
+oc get route | grep camunda
+oc get pvc
 ```
 
-## Resource footprint (Sandbox)
+### Xem log
 
-| Component | CPU request | Memory request |
-|-----------|-------------|----------------|
-| OpenSearch | 500m | 1Gi |
-| OpenSearch Dashboards | 200m | 512Mi |
-| Zeebe | 200m | 800Mi |
-| Operate / Tasklist | 200m mỗi cái | 512Mi |
-| Identity / Connectors / Gateway | 100–200m | 256–512Mi |
+```bash
+oc logs -f camunda-zeebe-0
+oc logs -f deploy/camunda-identity
+oc logs -f camunda-keycloak-0
+```
 
-Tổng khoảng **~2–3 CPU / 5–6 Gi** – vừa với quota Sandbox nếu các service khác không quá nặng.
+### Port-forward (nếu Route lỗi)
 
-## Troubleshooting nhanh
+```bash
+# Orchestration (Operate / Tasklist / Admin)
+oc port-forward svc/camunda-zeebe-gateway 8080:8080 -n khoadghg97-dev
 
-| Triệu chứng | Hành động |
-|-------------|-----------|
-| OpenSearch CrashLoop | `oc logs deploy/opensearch` – thường do OOM hoặc permission. Giảm `OPENSEARCH_JAVA_OPTS` xuống `-Xms256m -Xmx256m` |
-| Schema job fail | Kiểm tra `postgres-secret` key `password` và network tới `postgres:5432` |
-| Keycloak client job fail | Kiểm tra admin password + realm `banking` đã tồn tại |
-| Operate/Tasklist không login | Cập nhật `publicIssuerUrl` + redirect URI trên Keycloak |
-| Zeebe không export | Kiểm tra `http://opensearch:9200/_cluster/health` từ pod Zeebe |
+# Identity
+oc port-forward svc/camunda-identity 8084:80 -n khoadghg97-dev
 
-## Lưu ý
+# Keycloak
+oc port-forward svc/camunda-keycloak 18080:80 -n khoadghg97-dev
+```
 
-- OpenSearch dùng **emptyDir** → data mất khi pod restart (phù hợp Sandbox).
-- Security plugin OpenSearch **tắt** → chỉ dùng nội bộ cluster, không expose public.
-- Phase tích hợp Job Worker (sửa code customer-service) làm sau – bộ file này chỉ infrastructure + Camunda.
-- Version chart: kiểm tra `helm search repo camunda/camunda-platform --versions` để chọn bản mới nhất 8.6.x.
+Sau đó truy cập:
+- http://localhost:8080/operate
+- http://localhost:8080/tasklist
+- http://localhost:8080/admin
+- http://localhost:8084
+- http://localhost:18080
+
+### Kiểm tra API
+
+```bash
+curl -u demo:demo http://localhost:8080/v2/topology
+```
+
+---
+
+## 9. Lưu ý quan trọng
+
+1. **Developer Sandbox** có giới hạn resource rất thấp → chỉ chạy 1 broker Zeebe, tắt Optimize / Web Modeler / Console / Connectors.
+2. Từ **Camunda 8.9**, Helm **không tự tạo secret** nữa → bắt buộc tạo `camunda-credentials` trước khi cài.
+3. `clusterSize`, `partitionCount`, `replicationFactor` **phải là string** (`"1"`), không phải number.
+4. Phải bật `global.compatibility.openshift.adaptSecurityContext: force` vì Sandbox dùng SCC restricted.
+5. Elasticsearch cần `sysctlImage.enabled: false` trên OpenShift.
+6. Có **2 PostgreSQL** là bình thường khi bật Identity + Keycloak (mỗi cái một database riêng).
+7. File `values-sandbox.yaml` đã cấu hình sẵn `publicIssuerUrl` và `redirectUrl` trỏ đúng domain Route của Sandbox.
+
+---
+
+## Tài liệu tham khảo
+
+- [Camunda 8.9 Docs](https://docs.camunda.io/)
+- [Helm Chart Version Matrix](https://helm.camunda.io/camunda-platform/version-matrix/)
+- [OpenShift Deployment Guide](https://docs.camunda.io/docs/self-managed/deployment/helm/cloud-providers/openshift/redhat-openshift/)
+```
+
+Tôi cũng tạo luôn 3 file cấu hình còn lại để bạn tải đủ bộ.

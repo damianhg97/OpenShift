@@ -1,0 +1,163 @@
+# values-sandbox.yaml
+# Camunda 8.9 trên OpenShift Developer Sandbox
+# Namespace: khoadghg97-dev
+
+global:
+  compatibility:
+    openshift:
+      adaptSecurityContext: force
+
+  elasticsearch:
+    enabled: true
+
+  identity:
+    auth:
+      enabled: true
+      # Keycloak public URL
+      publicIssuerUrl: "https://camunda-keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/auth/realms/camunda-platform"
+
+      # Redirect URLs
+      identity:
+        redirectUrl: "https://camunda-identity-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+      operate:
+        redirectUrl: "https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/operate"
+      tasklist:
+        redirectUrl: "https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/tasklist"
+      orchestration:
+        redirectUrl: "https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+
+# ====================== Orchestration Cluster ======================
+orchestration:
+  clusterSize: "1"
+  partitionCount: "1"
+  replicationFactor: "1"
+  data:
+    secondaryStorage:
+      type: elasticsearch
+  resources:
+    requests:
+      cpu: 300m
+      memory: 768Mi
+    limits:
+      cpu: 600m
+      memory: 1280Mi
+
+# ====================== Components ======================
+operate:
+  enabled: true
+
+tasklist:
+  enabled: true
+
+identity:
+  enabled: true
+  contextPath: "/"
+  fullURL: "https://camunda-identity-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+  firstUser:
+    secret:
+      existingSecret: camunda-credentials
+      existingSecretKey: identity-firstuser-password
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+connectors:
+  enabled: false
+
+optimize:
+  enabled: false
+
+webModeler:
+  enabled: false
+
+console:
+  enabled: false
+
+# ====================== Elasticsearch ======================
+elasticsearch:
+  enabled: true
+  master:
+    replicaCount: 1
+    heapSize: 512m
+    resources:
+      requests:
+        cpu: 200m
+        memory: 768Mi
+      limits:
+        cpu: 400m
+        memory: 1280Mi
+    persistence:
+      size: 8Gi
+  sysctlImage:
+    enabled: false
+  data:
+    replicaCount: 0
+  coordinating:
+    replicaCount: 0
+  ingest:
+    replicaCount: 0
+
+# ====================== Identity PostgreSQL ======================
+identityPostgresql:
+  enabled: true
+  auth:
+    existingSecret: camunda-credentials
+    secretKeys:
+      adminPasswordKey: identity-postgresql-admin-password
+      userPasswordKey: identity-postgresql-user-password
+  primary:
+    resources:
+      requests:
+        cpu: 80m
+        memory: 192Mi
+      limits:
+        cpu: 200m
+        memory: 384Mi
+    persistence:
+      size: 4Gi
+
+# ====================== Keycloak ======================
+identityKeycloak:
+  enabled: true
+  auth:
+    existingSecret: camunda-credentials
+    passwordSecretKey: identity-keycloak-admin-password
+  postgresql:
+    auth:
+      existingSecret: camunda-credentials
+      secretKeys:
+        adminPasswordKey: identity-keycloak-postgresql-admin-password
+        userPasswordKey: identity-keycloak-postgresql-user-password
+    primary:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 150m
+          memory: 256Mi
+      persistence:
+        size: 3Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 300m
+      memory: 768Mi
+  # Quan trọng: hostname công khai
+  extraEnvVars:
+    - name: KC_HOSTNAME
+      value: "camunda-keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
+    - name: KC_HOSTNAME_STRICT
+      value: "false"
+    - name: KC_HOSTNAME_STRICT_HTTPS
+      value: "false"
+    - name: KC_HTTP_ENABLED
+      value: "true"
+    - name: KC_PROXY
+      value: "edge"

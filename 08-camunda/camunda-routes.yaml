@@ -1,77 +1,32 @@
-# =============================================================================
-# OpenShift Routes cho Camunda 8 UI components
-# Project: Kevin Bank - Banking Platform
-# Namespace: khoadghg97-dev
-# =============================================================================
-# Host pattern OpenShift Developer Sandbox:
-#   <route-name>-<namespace>.apps.<cluster-domain>
-# Bạn có thể để trống host → OpenShift tự generate.
-# TLS: edge + Redirect (phổ biến trên Sandbox)
-# =============================================================================
-
----
-# Route Operate UI
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: camunda-operate
+  name: camunda-orchestration
   namespace: khoadghg97-dev
   labels:
-    app: camunda
-    app.kubernetes.io/name: operate
-    app.kubernetes.io/part-of: banking-platform
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/name: camunda
 spec:
-  # Để trống host → OpenShift tự tạo
-  # host: camunda-operate-khoadghg97-dev.apps.sandbox.xxxxxx
+  host: camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com
   to:
     kind: Service
-    name: camunda-operate          # tên service do Helm chart tạo
+    name: camunda-zeebe-gateway
     weight: 100
   port:
-    targetPort: http
+    targetPort: 8080
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
   wildcardPolicy: None
-
 ---
-# Route Tasklist UI
-apiVersion: route.openshift.io/v1
-kind: Route
-metadata:
-  name: camunda-tasklist
-  namespace: khoadghg97-dev
-  labels:
-    app: camunda
-    app.kubernetes.io/name: tasklist
-    app.kubernetes.io/part-of: banking-platform
-    app.kubernetes.io/component: ui
-spec:
-  to:
-    kind: Service
-    name: camunda-tasklist
-    weight: 100
-  port:
-    targetPort: http
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: Redirect
-  wildcardPolicy: None
-
----
-# Route Identity UI (nếu enable)
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: camunda-identity
   namespace: khoadghg97-dev
   labels:
-    app: camunda
-    app.kubernetes.io/name: identity
-    app.kubernetes.io/part-of: banking-platform
-    app.kubernetes.io/component: ui
+    app.kubernetes.io/name: camunda
 spec:
+  host: camunda-identity-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com
   to:
     kind: Service
     name: camunda-identity
@@ -82,31 +37,22 @@ spec:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
   wildcardPolicy: None
-
 ---
-# Route Zeebe Gateway (gRPC) – tùy chọn, cần HTTP/2
-# Trên Sandbox có thể không hỗ trợ gRPC tốt qua Route edge.
-# Thường dùng port-forward hoặc Service nội bộ cho worker.
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: camunda-zeebe-gateway
+  name: camunda-keycloak
   namespace: khoadghg97-dev
   labels:
-    app: camunda
-    app.kubernetes.io/name: zeebe-gateway
-    app.kubernetes.io/part-of: banking-platform
-    app.kubernetes.io/component: gateway
-  annotations:
-    # Một số cluster hỗ trợ h2c
-    haproxy.router.openshift.io/balance: roundrobin
+    app.kubernetes.io/name: camunda
 spec:
+  host: camunda-keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com
   to:
     kind: Service
-    name: camunda-zeebe-gateway
+    name: camunda-keycloak
     weight: 100
   port:
-    targetPort: gateway   # hoặc http / grpc tùy chart version
+    targetPort: http
   tls:
     termination: edge
     insecureEdgeTerminationPolicy: Redirect
