@@ -15,3 +15,11 @@ data:
   # Sau khi deploy UI Route, cập nhật CORS origin thật:
   APP_CORS_ALLOWED_ORIGIN: "https://corporate-banking-ui-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
   APP_SEED_ENABLED: "false"
+  # --- Camunda (internal Service, KHÔNG dùng Route public) ---
+  CAMUNDA_GRPC_ADDRESS: "http://camunda-zeebe-gateway:26500"
+  CAMUNDA_REST_ADDRESS: "http://camunda-zeebe-gateway:8080"
+  # Internal Service của Keycloak-của-Camunda (Service "camunda-keycloak"),
+  # path "/auth" khớp publicIssuerUrl trong values-sandbox.yaml.
+  # Xác nhận lại bằng: oc get svc camunda-keycloak -n khoadghg97-dev
+  CAMUNDA_CLIENT_AUTH_ISSUER_URL: "https://camunda-keycloak-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com/auth/realms/camunda-platform"
+  CAMUNDA_CLIENT_AUTH_AUDIENCE: "orchestration-api"

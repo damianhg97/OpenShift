@@ -59,6 +59,37 @@ spec:
                 configMapKeyRef:
                   name: customer-service-config
                   key: APP_SEED_ENABLED
+            # --- Camunda ---
+            - name: CAMUNDA_GRPC_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: CAMUNDA_GRPC_ADDRESS
+            - name: CAMUNDA_REST_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: CAMUNDA_REST_ADDRESS
+            - name: CAMUNDA_CLIENT_AUTH_ISSUER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: CAMUNDA_CLIENT_AUTH_ISSUER_URL
+            - name: CAMUNDA_CLIENT_AUTH_AUDIENCE
+              valueFrom:
+                configMapKeyRef:
+                  name: customer-service-config
+                  key: CAMUNDA_CLIENT_AUTH_AUDIENCE
+            - name: CAMUNDA_CLIENT_AUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secret
+                  key: CAMUNDA_CLIENT_AUTH_CLIENT_ID
+            - name: CAMUNDA_CLIENT_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: customer-service-secret
+                  key: CAMUNDA_CLIENT_AUTH_CLIENT_SECRET
             # --- Valkey Cache ---
             # Dùng prefix APP_ để tránh xung đột với K8s service discovery.
             # K8s tự động inject VALKEY_PORT=tcp://... khi có Service tên "valkey"

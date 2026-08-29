@@ -7,6 +7,10 @@ global:
     openshift:
       adaptSecurityContext: force
 
+  security:
+    authentication:
+      method: oidc
+
   elasticsearch:
     enabled: true
 
@@ -31,6 +35,26 @@ orchestration:
   clusterSize: "1"
   partitionCount: "1"
   replicationFactor: "1"
+  # QUAN TRỌNG — thiếu block này thì Orchestration Cluster (Zeebe Gateway/API)
+  # mặc định chạy Basic Auth (theo Helm chart), KHÔNG chấp nhận Bearer JWT dù
+  # global.identity.auth.enabled=true (block đó chỉ cấu hình Management
+  # Identity/Keycloak, không tự bật OIDC cho Zeebe Gateway). Đây chính là
+  # nguyên nhân lỗi "Authentication object not found in SecurityContext".
+  # Cấu hình này đúng theo tài liệu chính thức "Helm chart internal Keycloak
+  # setup" (docs.camunda.io, Camunda 8.8+) — dùng đúng key
+  # identity-orchestration-client-token đã có sẵn trong camunda-credentials.yaml.
+  security:
+    authentication:
+      method: oidc
+      oidc:
+        secret:
+          existingSecret: camunda-credentials
+          existingSecretKey: identity-orchestration-client-token
+        # QUAN TRỌNG — thiếu key này thì chart dùng mặc định
+        # http://localhost:8080, rồi tự nối thêm /sso-callback, khiến
+        # Keycloak callback về localhost thay vì domain OpenShift thật.
+        # Chart sẽ tự nối thêm /sso-callback vào giá trị này.
+        redirectUrl: "https://camunda-orchestration-khoadghg97-dev.apps.rm3.7wse.p1.openshiftapps.com"
   data:
     secondaryStorage:
       type: elasticsearch
