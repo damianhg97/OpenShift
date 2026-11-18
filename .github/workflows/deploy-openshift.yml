@@ -1,0 +1,222 @@
+name: Deploy selected OpenShift components
+
+on:
+  workflow_dispatch:
+    inputs:
+      postgresql:
+        description: Deploy PostgreSQL
+        required: false
+        type: boolean
+        default: false
+      keycloak:
+        description: Deploy Keycloak
+        required: false
+        type: boolean
+        default: false
+      customer-service:
+        description: Deploy Customer Service
+        required: false
+        type: boolean
+        default: false
+      ui:
+        description: Deploy UI
+        required: false
+        type: boolean
+        default: false
+      kong:
+        description: Deploy Kong
+        required: false
+        type: boolean
+        default: false
+      valkey:
+        description: Deploy Valkey
+        required: false
+        type: boolean
+        default: false
+      kafka:
+        description: Deploy Kafka
+        required: false
+        type: boolean
+        default: false
+      camunda:
+        description: Deploy Camunda
+        required: false
+        type: boolean
+        default: false
+      nexus:
+        description: Deploy Nexus
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openshift-deploy-khoadghg97-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Apply selected components
+    runs-on: ubuntu-latest
+    env:
+      NAMESPACE: khoadghg97-dev
+      OCP_SERVER: ${{ vars.OCP_SERVER }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate selection and cluster credentials
+        env:
+          OCP_TOKEN: ${{ secrets.OCP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ \
+            "${{ inputs.postgresql }}" != "true" && \
+            "${{ inputs.keycloak }}" != "true" && \
+            "${{ inputs.customer-service }}" != "true" && \
+            "${{ inputs.ui }}" != "true" && \
+            "${{ inputs.kong }}" != "true" && \
+            "${{ inputs.valkey }}" != "true" && \
+            "${{ inputs.kafka }}" != "true" && \
+            "${{ inputs.camunda }}" != "true" && \
+            "${{ inputs.nexus }}" != "true" \
+          ]]; then
+            echo "::error::Select at least one component to deploy."
+            exit 1
+          fi
+
+          if [[ -z "$OCP_SERVER" || -z "$OCP_TOKEN" ]]; then
+            echo "::error::Configure the OCP_SERVER Actions variable and OCP_TOKEN Actions secret."
+            exit 1
+          fi
+
+      - name: Install OpenShift CLI
+        uses: redhat-actions/oc-installer@v1
+
+      - name: Install Helm
+        if: inputs.camunda
+        uses: azure/setup-helm@v4
+
+      - name: Log in to OpenShift
+        env:
+          OCP_TOKEN: ${{ secrets.OCP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc login "$OCP_SERVER" --token="$OCP_TOKEN"
+          oc get namespace "$NAMESPACE" >/dev/null
+          oc whoami
+
+      - name: Deploy PostgreSQL
+        if: inputs.postgresql
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 01-postgresql/postgres-secret.yaml
+          oc apply -n "$NAMESPACE" -f 01-postgresql/postgres-pvc.yaml
+          oc apply -n "$NAMESPACE" -f 01-postgresql/postgres-service.yaml
+          oc apply -n "$NAMESPACE" -f 01-postgresql/postgres-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/postgres --timeout=120s
+
+      - name: Deploy Keycloak
+        if: inputs.keycloak
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-secret.yaml
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-theme-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-db-init-job.yaml
+          oc wait -n "$NAMESPACE" --for=condition=complete job/keycloak-db-init --timeout=120s
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-service.yaml
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-route.yaml
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/keycloak --timeout=300s
+          oc apply -n "$NAMESPACE" -f 02-keycloak/keycloak-init-realm-job.yaml
+          oc wait -n "$NAMESPACE" --for=condition=complete job/keycloak-init-realm --timeout=300s
+
+      - name: Deploy Customer Service
+        if: inputs.customer-service
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 03-customer-service/customer-service-secret.yaml
+          oc apply -n "$NAMESPACE" -f 03-customer-service/customer-service-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 03-customer-service/customer-service-service.yaml
+          oc apply -n "$NAMESPACE" -f 03-customer-service/customer-service-route.yaml
+          oc apply -n "$NAMESPACE" -f 03-customer-service/customer-service-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/customer-service --timeout=180s
+
+      - name: Deploy UI
+        if: inputs.ui
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 04-ui/ui-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 04-ui/ui-service.yaml
+          oc apply -n "$NAMESPACE" -f 04-ui/ui-route.yaml
+          oc apply -n "$NAMESPACE" -f 04-ui/ui-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/corporate-banking-ui --timeout=120s
+
+      - name: Deploy Kong
+        if: inputs.kong
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-service.yaml
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-route.yaml
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-route-admin.yaml
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-route-manager.yaml
+          oc apply -n "$NAMESPACE" -f 05-kong/kong-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/kong --timeout=180s
+
+      - name: Deploy Valkey
+        if: inputs.valkey
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 06-valkey/valkey-configmap.yaml
+          oc apply -n "$NAMESPACE" -f 06-valkey/valkey-service.yaml
+          oc apply -n "$NAMESPACE" -f 06-valkey/valkey-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/valkey --timeout=120s
+
+      - name: Deploy Kafka
+        if: inputs.kafka
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 07-kafka/kafka-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/my-cluster-kafka --timeout=180s
+
+      - name: Deploy Camunda
+        if: inputs.camunda
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 08-camunda/camunda-credentials.yaml
+          helm repo add camunda https://helm.camunda.io --force-update
+          helm repo update camunda
+          helm upgrade --install camunda camunda/camunda-platform \
+            --version 14.8.5 \
+            --namespace "$NAMESPACE" \
+            -f 08-camunda/values-sandbox.yaml \
+            --wait \
+            --timeout 20m
+          oc apply -n "$NAMESPACE" -f 08-camunda/camunda-routes.yaml
+
+      - name: Deploy Nexus
+        if: inputs.nexus
+        shell: bash
+        run: |
+          set -euo pipefail
+          oc apply -n "$NAMESPACE" -f 99-nexus-repository-manager/nexus-secret.yaml
+          oc apply -n "$NAMESPACE" -f 99-nexus-repository-manager/nexus-pvc.yaml
+          oc apply -n "$NAMESPACE" -f 99-nexus-repository-manager/nexus-service.yaml
+          oc apply -n "$NAMESPACE" -f 99-nexus-repository-manager/nexus-route.yaml
+          oc apply -n "$NAMESPACE" -f 99-nexus-repository-manager/nexus-deployment.yaml
+          oc rollout status -n "$NAMESPACE" deployment/nexus --timeout=300s

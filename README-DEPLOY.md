@@ -2,13 +2,35 @@
 
 Bộ manifest được tổ chức để **deploy từng thành phần một**, dùng **ConfigMap + Secret** nên đổi cấu hình (URL, CORS, Keycloak issuer…) **không cần rebuild container**.
 
+## Deploy bằng GitHub Actions
+
+Workflow `.github/workflows/deploy-openshift.yml` chạy thủ công qua **Actions → Deploy selected OpenShift components → Run workflow**. Mỗi thành phần có checkbox riêng; chỉ những thành phần được tích mới được triển khai. Bỏ chọn các thành phần cần skip. Tất cả checkbox mặc định bỏ chọn và workflow sẽ báo lỗi nếu không chọn thành phần nào.
+
+Thiết lập trước khi chạy:
+
+1. Đẩy workflow lên default branch của repository.
+2. Tạo Actions **Variable** `OCP_SERVER` với URL API của cụm, ví dụ `https://api.<cluster>:6443`.
+3. Tạo Actions **Secret** `OCP_TOKEN` với token đăng nhập `oc` có quyền tạo/cập nhật resource trong namespace.
+4. Đảm bảo namespace `khoadghg97-dev` đã tồn tại và token có quyền truy cập namespace đó.
+5. Cập nhật các manifest cấu hình, storage class và Secret ứng dụng trước khi chạy.
+
+Token phải là **Secret**, không phải Actions Variable, để GitHub che giá trị khỏi log và giới hạn việc lộ credential. Workflow thực hiện `oc login` bằng token, rồi chạy tuần tự các thành phần đã chọn theo thứ tự PostgreSQL, Keycloak, Customer Service, UI, Kong, Valkey, Kafka, Camunda, Nexus. Nếu một bước thất bại, workflow dừng và không chạy các bước sau. Pipeline không tự deploy thành phần phụ thuộc; hãy chọn các phụ thuộc cần thiết nếu chúng chưa có trên cluster. Camunda được cài bằng Helm; các thành phần còn lại dùng `oc apply`.
+
+Các file Secret trong repository sẽ được apply khi chọn thành phần tương ứng. Không commit credential production vào các file này; cần thay bằng cơ chế quản lý Secret an toàn trước khi deploy production. Kafka topic job không được chạy vì manifest được ghi chú là tùy chọn.
+
 ```
-manifests/
+.
+├── .github/workflows/deploy-openshift.yml
 ├── 00-namespace.yaml
-├── 01-postgresql/          # Bước 1
-├── 02-keycloak/            # Bước 2
-├── 03-customer-service/    # Bước 3
-├── 04-ui/                  # Bước 4
+├── 01-postgresql/
+├── 02-keycloak/
+├── 03-customer-service/
+├── 04-ui/
+├── 05-kong/
+├── 06-valkey/
+├── 07-kafka/
+├── 08-camunda/
+├── 99-nexus-repository-manager/
 └── README-DEPLOY.md
 ```
 
